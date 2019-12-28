@@ -1,0 +1,9 @@
+---
+- name: Provision an Ubuntu server exposed to the internet
+  hosts: server
+  remote_user: {{ user_username }}
+  become: yes
+  vars_files:
+    - group_vars/vars
+  roles:
+    - server

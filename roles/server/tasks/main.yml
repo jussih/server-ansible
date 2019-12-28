@@ -1,0 +1,85 @@
+---
+- name: Ensure correct locale exists
+  locale_gen:
+    name: fi_FI.UTF-8
+    state: present
+
+- name: Configure locale
+  command: localectl set-locale LANG=en_US.UTF-8 LC_NUMERIC=fi_FI.UTF-8 LC_MONETARY=fi_FI.UTF-8 LC_PAPER=fi_FI.UTF-8 LC_NAME=fi_FI.UTF-8 LC_ADDRESS=fi_FI.UTF-8 LC_TELEPHONE=fi_FI.UTF-8 LC_MEASUREMENT=fi_FI.UTF-8 LC_IDENTIFICATION=fi_FI.UTF-8
+
+
+- name: Allow 'sudo' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%sudo'
+    line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Create priviledged user
+  user:
+    name: "{{ user_username }}"
+    groups: adm,sudo,users
+    shell: /bin/bash
+
+- name: Set up authorized keys for user "user"
+  authorized_key:
+    user: user
+    state: present
+    key: "{{ user_ssh_pubkey }}"
+
+- name: Harden SSH
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - regexp: "^PasswordAuthentication"
+      line: "PasswordAuthentication no"
+    - regexp: "^PermitRootLogin"
+      line: "PermitRootLogin no"
+    - regexp: "^ChallengeResponseAuthentication"
+      line: "ChallengeResponseAuthentication no"
+  notify: restart ssh
+
+- name: Install Uncomplicated FireWall (ufw)
+  apt:
+    name: ufw
+    state: present
+    update_cache: yes
+
+- name: Firewall config - enable and deny all by default
+  ufw:
+    state: enabled
+    policy: deny
+
+- name: Firewall config - allow port 22 for SSH and log connections
+  ufw:
+    rule: allow
+    port: 22
+    log: true
+
+- name: Firewall config - rate limit connections to ssh
+  ufw:
+    rule: limit
+    port: 22
+    proto: tcp
+
+- name: Install unattended upgrades
+  apt:
+    name: unattended-upgrades
+    state: present
+
+- name: Configure unattended upgrades
+  copy:
+    src="20auto-upgrades"
+    dest="/etc/apt/apt.conf.d/20auto-upgrades"
+    backup=no
+
+- name: Install fail2ban
+  apt:
+    name: "fail2ban"
+    state: latest
+
+

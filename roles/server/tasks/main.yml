@@ -82,4 +82,9 @@
     name: "fail2ban"
     state: latest
 
-
+- name: Disable ubuntu motd-news
+  lineinfile:
+    dest: /etc/default/motd-news
+    state: present
+    regexp: '^ENABLED='
+    line: 'ENABLED=0'

@@ -1,0 +1,52 @@
+---
+
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Firewall config - allow HTTP
+  ufw:
+    rule: allow
+    port: 80
+
+- name: Copy default HTML page
+  copy:
+    src: "index.html"
+    dest: "/var/www/{{ domain_name }}/html/"
+    force: no
+    owner: root
+    mode: '0644'
+
+- name: Configure HTTP site
+  template:
+    src: http.site-available.j2
+    dest: "/etc/nginx/sites-available/{{ domain_name }}"
+    force: no
+    owner: root
+
+- name: Disable default site
+  file:
+    path: "/etc/nginx/sites-enabled/default"
+    state: absent
+
+- name: Enable {{ domain_name }} site
+  file:
+    src: "/etc/nginx/sites-available/{{ domain_name }}"
+    dest: "/etc/nginx/sites-enabled/{{ domain_name }}"
+    owner: root
+    state: link
+  notify: restart nginx
+
+- name: Wait until Nginx can serve a page
+  become: no
+  uri:
+    url: "http://{{ domain_name }}"
+    follow_redirects: none
+    method: GET
+  delegate_to: localhost
+  register: get_result
+  until: get_result.status == 200
+  retries: 6 # 6 * 5 seconds = wait for half a minute
+  delay: 5

@@ -16,15 +16,15 @@
     line: '%sudo ALL=(ALL) NOPASSWD: ALL'
     validate: /usr/sbin/visudo -cf %s
 
-- name: Create priviledged user
+- name: Create priviledged user "{{ user_username }}"
   user:
     name: "{{ user_username }}"
     groups: adm,sudo,users
     shell: /bin/bash
 
-- name: Set up authorized keys for user "user"
+- name: Set up authorized keys for user "{{ user_username }}"
   authorized_key:
-    user: user
+    user:  "{{ user_username }}"
     state: present
     key: "{{ user_ssh_pubkey }}"
 

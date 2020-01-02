@@ -1,3 +1,4 @@
 ---
 user_username: "user"
 user_ssh_pubkey: "[ssh-rsa asdf123]"
+domain_name: "example.com"

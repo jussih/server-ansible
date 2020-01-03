@@ -7,3 +7,4 @@
     - group_vars/vars
   roles:
     - server
+    - { role: httpd, when: httpd_enabled }

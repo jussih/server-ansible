@@ -43,10 +43,65 @@
   become: no
   uri:
     url: "http://{{ domain_name }}"
-    follow_redirects: none
+    follow_redirects: true
     method: GET
   delegate_to: localhost
   register: get_result
   until: get_result.status == 200
   retries: 6 # 6 * 5 seconds = wait for half a minute
   delay: 5
+
+- name: Add Certbot PPA
+  apt_repository:
+    repo: ppa:certbot/certbot
+  when: ssl_enabled
+
+- name: Ensure Ubuntu universe repo is enabled
+  apt_repository:
+    repo: "deb http://us.archive.ubuntu.com/ubuntu {{ ansible_distribution_release|lower }} universe"
+    state: present
+  when: ssl_enabled
+
+- name: Install Certbot
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - certbot
+    - python-certbot-nginx
+  when: ssl_enabled
+
+- name: Generate certificate
+  command:
+    cmd: "certbot certonly --nginx --noninteractive --agree-tos --email {{ certbot_admin_email }} -d {{ domain_name }}"
+    creates: "/etc/letsencrypt/live/{{ domain_name }}/fullchain.pem"
+  when: ssl_enabled
+
+- name: Configure HTTPS site
+  template:
+    src: https.site-available.j2
+    dest: "/etc/nginx/sites-available/https_{{ domain_name }}"
+    force: no
+    owner: root
+  when: ssl_enabled
+
+- name: Enable {{ domain_name }} HTTPS site
+  file:
+    src: "/etc/nginx/sites-available/https_{{ domain_name }}"
+    dest: "/etc/nginx/sites-enabled/https_{{ domain_name }}"
+    owner: root
+    state: link
+  when: ssl_enabled
+
+- name: Disable insecure HTTP site (redirects enabled to HTTPS site)
+  file:
+    path: "/etc/nginx/sites-enabled/{{ domain_name }}"
+    state: absent
+  notify: restart nginx
+  when: ssl_enabled
+
+- name: Firewall config - allow HTTPS
+  ufw:
+    rule: allow
+    port: 443

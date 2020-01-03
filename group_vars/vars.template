@@ -1,4 +1,7 @@
 ---
 user_username: "user"
 user_ssh_pubkey: "[ssh-rsa asdf123]"
+httpd_enabled: true
+ssl_enabled: true
+certbot_admin_email:
 domain_name: "example.com"

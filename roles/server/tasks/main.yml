@@ -20,7 +20,6 @@
   user:
     name: "{{ user_username }}"
     groups: adm,sudo,users
-    shell: /bin/bash
 
 - name: Set up authorized keys for user "{{ user_username }}"
   authorized_key:
